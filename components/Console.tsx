@@ -395,4 +395,4 @@ export default function Model(props: JSX.IntrinsicElements["group"]) {
   );
 }
 
-useGLTF.preload("/console.glb");
+useGLTF.preload("models/console.glb");

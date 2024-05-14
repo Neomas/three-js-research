@@ -1,8 +1,9 @@
 "use client";
-import React, { useRef } from "react";
+
+import React, { useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Environment, OrbitControls } from "@react-three/drei";
-import Console from "@components/Console";
+
+import RocketScene from "@components/RocketScene";
 
 const page = () => {
   return (
@@ -16,11 +17,7 @@ const page = () => {
         }}
         flat
       >
-        <OrbitControls />
-        <Environment background={false} files="adams_place_bridge_1k.hdr" />
-
-        <color attach="background" args={["#ECEAE8"]} />
-        <Console />
+        <RocketScene />
       </Canvas>
     </div>
   );
