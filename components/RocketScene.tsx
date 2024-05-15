@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Environment,
   OrbitControls,
+  OrthographicCamera,
   PerspectiveCamera,
   useKeyboardControls,
 } from "@react-three/drei";
@@ -21,6 +22,11 @@ const RocketScene = () => {
   const cam = useRef<any>();
   const model = useRef<any>();
 
+  const [smoothedCameraPosition] = useState(
+    () => new THREE.Vector3(10, 10, 10)
+  );
+  const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
+
   const [isFlying, setIsFlying] = useState(false);
 
   // Add state for mouse position
@@ -28,16 +34,12 @@ const RocketScene = () => {
   const [subscribeKeys, getKeys] = useKeyboardControls();
 
   const jump = () => {
-    rocketRef.current?.applyImpulseAtPoint(
-      { x: 0, y: 50, z: 0 },
-      { x: 0, y: -1, z: 0 },
-      true
-    );
+    setIsFlying(true);
   };
 
   useFrame((state, delta) => {
-    if (rocketRef.current) {
-      const { forward, backward, leftward, rightward } = getKeys();
+    if (rocketRef.current && cam.current) {
+      const { forward, backward, leftward, rightward, jump } = getKeys();
 
       const impulse = { x: 0, y: 0, z: 0 };
       const torque = { x: 0, y: 0, z: 0 };
@@ -54,59 +56,88 @@ const RocketScene = () => {
         torque.x += torqueStrength;
       }
       if (leftward) {
+        impulse.x += impulseStrength;
+        torque.z += torqueStrength;
+      }
+      if (rightward) {
         impulse.x -= impulseStrength;
         torque.z -= torqueStrength;
       }
-      if (rightward) {
-        impulse.x += impulseStrength;
-        torque.z += torqueStrength;
+      if (jump) {
+        const impulseDirection = new THREE.Vector3(
+          0,
+          0,
+          -1000 * delta
+        ).applyQuaternion(rocketRef.current.rotation());
+        rocketRef.current.applyImpulse(impulseDirection, true);
       }
 
       rocketRef.current.applyImpulse(impulse, true);
       rocketRef.current.applyTorqueImpulse(torque, true);
-    }
 
-    if (rocketRef.current && cam.current) {
       // Update camera position and rotation
+      const bodyPosition = rocketRef.current.translation();
 
-      const modelPosition = rocketRef.current.translation();
-      const modelRotation = rocketRef.current.rotation;
-      const cameraDistance = 10; // Adjust the distance as needed
-      const cameraOffset = new THREE.Vector3(0, 0, cameraDistance);
-      const cameraPosition = cameraOffset
-        .applyQuaternion(modelRotation)
-        .add(modelPosition);
+      const cameraPosition = new THREE.Vector3();
+      cameraPosition.copy(bodyPosition);
+      cameraPosition.z += 7.25;
+      cameraPosition.y += 15.65;
 
-      cam.current.position.copy(cameraPosition);
-      cam.current.lookAt(modelPosition);
+      const cameraTarget = new THREE.Vector3();
+      cameraTarget.copy(bodyPosition);
+      cameraTarget.y += 0.25;
 
-      console.log("cameraDistance", cameraDistance);
-      console.log("cameraOffset", cameraOffset);
-      console.log("cameraPosition", cameraPosition);
+      smoothedCameraPosition.lerp(cameraPosition, 5 * delta);
+      smoothedCameraTarget.lerp(cameraTarget, 5 * delta);
+
+      state.camera.position.copy(cameraPosition);
+      state.camera.lookAt(cameraTarget);
+
+      // const modelPosition = rocketRef.current.translation();
+      // const modelRotation = rocketRef.current.rotation();
+
+      // // console.log("modelPosition", modelPosition);
+      // // console.log("modelRotation", modelRotation);
+
+      // const cameraDistance = 10; // Adjust the distance as needed
+      // const cameraOffset = new THREE.Vector3(10, 10, cameraDistance);
+      // const cameraPosition = cameraOffset
+      //   .applyQuaternion(modelRotation)
+      //   .add(modelPosition);
+
+      // // cam.current.position.copy(cameraPosition);
+      // cam.current.lookAt(modelPosition);
+
+      // // console.log("cameraDistance", cameraDistance);
+      // // console.log("cameraOffset", cameraOffset);
+      // console.log("cameraPosition", cameraPosition);
+      // console.log("modelPosition", modelPosition);
     }
   });
+
+  useEffect(() => {
+    console.log(isFlying ? "Rocket is flying" : "Rocket is not flying");
+  }, [isFlying]);
 
   useEffect(() => {
     subscribeKeys(
       (state) => state.jump,
       (value) => {
-        if (value) console.log("Yes, jump!");
-        jump();
+        if (value) {
+          jump();
+        } else {
+          setIsFlying(false);
+        }
       }
     );
   }, []);
 
   return (
     <>
-      <Physics debug>
+      <Physics>
         {/* <OrbitControls /> */}
-        <Environment background={false} files="adams_place_bridge_1k.hdr" />
 
-        <PerspectiveCamera
-          // position={[0, 2, 50]}
-          // rotation={[-0.3, 0, 0]}
-          ref={cam}
-        />
+        <PerspectiveCamera position={[5, 5, 5]} ref={cam} />
 
         <RigidBody
           colliders={"hull"}
@@ -116,20 +147,19 @@ const RocketScene = () => {
           friction={1}
           linearDamping={0.5}
           angularDamping={0.5}
-          // angularVelocity={[0, 1, 0]}
           ref={rocketRef}
         >
           <Rocket isFlying={isFlying} ref={model} />
         </RigidBody>
 
-        <CuboidCollider position={[0, -2, 0]} args={[100, 0.5, 100]}>
+        {/* <CuboidCollider position={[0, -20, 0]} args={[100, 0.5, 100]}>
           <mesh>
-            <boxGeometry args={[40, 1, 40]} />
+            <boxGeometry args={[200, 1, 200]} />
             <meshStandardMaterial color="green" />
           </mesh>
-        </CuboidCollider>
+        </CuboidCollider> */}
 
-        {/* <mesh position={[0, 0, 0]} ref={dot}>
+        {/* <mesh position={[0, -10, 0]} ref={dot}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial color="red" />
         </mesh> */}

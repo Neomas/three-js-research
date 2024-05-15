@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 
 import RocketScene from "@components/RocketScene";
-import { KeyboardControls } from "@react-three/drei";
+import { Environment, KeyboardControls } from "@react-three/drei";
 
 const page = () => {
   return (
@@ -27,6 +27,8 @@ const page = () => {
           }}
           flat
         >
+          <Environment background={false} files="adams_place_bridge_1k.hdr" />
+
           <RocketScene />
         </Canvas>
       </KeyboardControls>
